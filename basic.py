@@ -2,21 +2,9 @@ import pyaudio
 import numpy as np
 import time
 
-import os
-import librosa
-
-def load_samples(directory):
-    samples = {}
-    for file in os.listdir(directory):
-        if file.endswith('.wav'):
-            sample_name = os.path.splitext(file)[0]
-            file_path = os.path.join(directory, file)
-            samples[sample_name], _ = librosa.load(file_path, sr=44100)
-    return samples
-
 
 # 오디오 설정 변수
-CHUNK = 512
+CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
