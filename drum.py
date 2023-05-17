@@ -7,6 +7,7 @@ import time
 import os
 import librosa
 from scipy.spatial.distance import euclidean
+import matplotlib.pyplot as plt
 def load_samples(directory):
     samples = {}
     for file in os.listdir(directory):
@@ -99,6 +100,10 @@ try:
             end_time = time.time()
             elapsed_time = end_time - start_time
             print(f"코드 실행 시간: {elapsed_time:.5f} 초")
+             # 그래프 그리기
+            plt.figure(figsize=(14, 5))
+            plt.plot(input_audio)
+            plt.show()
 except KeyboardInterrupt:
     print("종료합니다.")
 
