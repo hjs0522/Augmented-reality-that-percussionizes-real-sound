@@ -8,6 +8,7 @@ import os
 import librosa
 from scipy.spatial.distance import euclidean
 import matplotlib.pyplot as plt
+
 def load_samples(directory):
     samples = {}
     for file in os.listdir(directory):
@@ -23,24 +24,26 @@ drum_samples = load_samples(samples_directory)
 # 각 샘플에 대한 파일 경로를 저장합니다.
 drum_samples_paths = {name: os.path.join(samples_directory, name + '.wav') for name in drum_samples.keys()}
 
+drum_mfcc_dic = {}
+# 드럼 소리의 MFCC 계산
+for key,value in drum_samples.items():
+    drum_mfcc = librosa.feature.mfcc(y=value, sr=44100)
+    drum_mfcc_mean = drum_mfcc.mean(axis=1)
+    drum_mfcc_dic[key] = drum_mfcc_mean
 
 #가장 비슷한 드럼 소리를 찾아주는 함수
-def find_nearest_drum_sound(input_audio, drum_sounds):
+def find_nearest_drum_sound(input_audio):
     # 입력 오디오의 MFCC 계산
     input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100)
     input_mfcc_mean = input_mfcc.mean(axis=1)
-
+    print(input_mfcc_mean)
     min_distance = float('inf')
     nearest_drum = None
     
     for key,value in drum_samples.items():
-        # 드럼 소리의 MFCC 계산
-        drum_mfcc = librosa.feature.mfcc(y=value, sr=44100)
-        drum_mfcc_mean = drum_mfcc.mean(axis=1)
-        
         # 유클리디안 거리를 사용하여 입력 오디오와 드럼 소리의 유사성 계산
-        distance = euclidean(input_mfcc_mean, drum_mfcc_mean)
-        
+        distance = euclidean(input_mfcc_mean, drum_mfcc_dic[key])
+        print(key,distance)
         # 가장 유사한 드럼 소리 찾기
         if distance < min_distance:
             min_distance = distance
@@ -49,7 +52,7 @@ def find_nearest_drum_sound(input_audio, drum_sounds):
 
 
 # 오디오 스트리밍을 위한 설정
-CHUNK = 1024  # 한 번에 읽을 프레임 수
+CHUNK = 1024*2  # 한 번에 읽을 프레임 수
 FORMAT = pyaudio.paInt16  # 16비트 정수 형식
 CHANNELS = 1  # mono
 RATE = 44100  # 샘플링 레이트 (Hz)
@@ -83,18 +86,18 @@ def play_sound_thread(file):
 try:
     while True:
         start_time = time.time()
-        data = stream.read(CHUNK,exception_on_overflow= False)
+        data = stream.read(CHUNK,exception_on_overflow = False)
         # 바이트 형식의 입력 오디오 데이터를 numpy 배열로 변환 => 계산하기 쉬워짐
         input_audio = np.frombuffer(data, dtype=np.int16)
 
         # 입력 오디오 데이터를 부동 소수점으로 변환
         input_audio = input_audio.astype(np.float32) / 32767.0
 
-        # 가장 유사한 드럼 소리 찾기
-        nearest_drum = find_nearest_drum_sound(input_audio, drum_sounds)
         rms = audioop.rms(data, 2)  # 16비트 mono 데이터의 RMS 계산
 
         if rms > THRESHOLD:
+            # 가장 유사한 드럼 소리 찾기
+            nearest_drum = find_nearest_drum_sound(input_audio)
             play_sound_thread(drum_samples_paths[nearest_drum])
             # 코드 실행 후 시간을 측정합니다.
             end_time = time.time()
@@ -104,6 +107,7 @@ try:
             plt.figure(figsize=(14, 5))
             plt.plot(input_audio)
             plt.show()
+            print(nearest_drum)
 except KeyboardInterrupt:
     print("종료합니다.")
 
