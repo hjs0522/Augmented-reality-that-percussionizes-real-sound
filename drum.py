@@ -34,12 +34,18 @@ for key,value in drum_samples.items():
 #가장 비슷한 드럼 소리를 찾아주는 함수
 def find_nearest_drum_sound(input_audio):
     # 입력 오디오의 MFCC 계산
+    """
+    mfcc 를 통해 소리의 특징을 분석할 수 있다. 그렇기에 입력 소리의 mfcc를 추출하여 사용한다.
+    """
     input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100)
     input_mfcc_mean = input_mfcc.mean(axis=1)
     print(input_mfcc_mean)
     min_distance = float('inf')
     nearest_drum = None
     
+    """
+    mfcc간의 비교를 하는 경우 가장 많이 쓰는 유클리디안 거리를 사용하여 입력 오디오와 드럽 소리의 유사성을 계산한다.
+    """
     for key,value in drum_samples.items():
         # 유클리디안 거리를 사용하여 입력 오디오와 드럼 소리의 유사성 계산
         distance = euclidean(input_mfcc_mean, drum_mfcc_dic[key])
@@ -94,7 +100,11 @@ try:
         input_audio = input_audio.astype(np.float32) / 32767.0
 
         rms = audioop.rms(data, 2)  # 16비트 mono 데이터의 RMS 계산
-
+        """
+        만약 THRESHOLD를 설정해 주지 않는다면 stream.read는 계속 동작 하고있기 때문에 아무 소리가 입력되지 않을때도
+        입력 소리와 가장 비슷한 소리를 찾고 출력해주게 된다. 그렇기에 THRESHOLD를 이용해 특정 크기 이상의 소리가 입력되었을 경우만
+        가장 비슷한 소리를 찾고 출력되도록 한다.
+        """
         if rms > THRESHOLD:
             # 가장 유사한 드럼 소리 찾기
             nearest_drum = find_nearest_drum_sound(input_audio)
