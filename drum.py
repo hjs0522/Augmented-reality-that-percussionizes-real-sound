@@ -27,7 +27,7 @@ drum_samples_paths = {name: os.path.join(samples_directory, name + '.wav') for n
 drum_mfcc_dic = {}
 # 드럼 소리의 MFCC 계산
 for key,value in drum_samples.items():
-    drum_mfcc = librosa.feature.mfcc(y=value, sr=44100)
+    drum_mfcc = librosa.feature.mfcc(y=value, sr=44100,n_fft=1024)
     drum_mfcc_mean = drum_mfcc.mean(axis=1)
     drum_mfcc_dic[key] = drum_mfcc_mean
 
@@ -37,7 +37,7 @@ def find_nearest_drum_sound(input_audio):
     """
     mfcc 를 통해 소리의 특징을 분석할 수 있다. 그렇기에 입력 소리의 mfcc를 추출하여 사용한다.
     """
-    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100)
+    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100,n_fft=1024)
     input_mfcc_mean = input_mfcc.mean(axis=1)
     print(input_mfcc_mean)
     min_distance = float('inf')
@@ -58,7 +58,7 @@ def find_nearest_drum_sound(input_audio):
 
 
 # 오디오 스트리밍을 위한 설정
-CHUNK = 1024*2  # 한 번에 읽을 프레임 수
+CHUNK = 1024  # 한 번에 읽을 프레임 수
 FORMAT = pyaudio.paInt16  # 16비트 정수 형식
 CHANNELS = 1  # mono
 RATE = 44100  # 샘플링 레이트 (Hz)
