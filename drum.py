@@ -64,7 +64,7 @@ CHANNELS = 1  # mono
 RATE = 44100  # 샘플링 레이트 (Hz)
 
 # 소리 임계값 설정 (dB)
-THRESHOLD = 5000
+THRESHOLD = 2000
 
 # pyaudio 인스턴스 생성
 p = pyaudio.PyAudio()
@@ -76,16 +76,16 @@ stream = p.open(format=FORMAT,
                 input=True,
                 frames_per_buffer=CHUNK)
 
-def play_sound(file):
+def play_sound(file, volume):
     pygame.mixer.init()
     pygame.mixer.music.load(file)
+    pygame.mixer.music.set_volume(volume)
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy():  # 음악 재생이 끝나기를 기다림
         continue
 
-# 스레드를 사용하여 오디오 재생
-def play_sound_thread(file):
-    t = threading.Thread(target=play_sound, args=(file,))
+def play_sound_thread(file, volume):
+    t = threading.Thread(target=play_sound, args=(file, volume))
     t.start()
 
 # 스트림을 지속적으로 읽고 소리 크기 확인
@@ -100,15 +100,23 @@ try:
         input_audio = input_audio.astype(np.float32) / 32767.0
 
         rms = audioop.rms(data, 2)  # 16비트 mono 데이터의 RMS 계산
+        
+        
         """
         만약 THRESHOLD를 설정해 주지 않는다면 stream.read는 계속 동작 하고있기 때문에 아무 소리가 입력되지 않을때도
         입력 소리와 가장 비슷한 소리를 찾고 출력해주게 된다. 그렇기에 THRESHOLD를 이용해 특정 크기 이상의 소리가 입력되었을 경우만
         가장 비슷한 소리를 찾고 출력되도록 한다.
         """
         if rms > THRESHOLD:
+            stream.stop_stream()
+            MAX_RMS = 10000  # 이 값은 소리의 최대 RMS 값에 따라 조정해야 할 수도 있습니다.
+            volume = rms / MAX_RMS
+            volume = max(0.0, min(1.0, volume))  # 볼륨을 0.0과 1.0 사이로 제한합니다.
             # 가장 유사한 드럼 소리 찾기
+            print("volume is")
+            print(volume)
             nearest_drum = find_nearest_drum_sound(input_audio)
-            play_sound_thread(drum_samples_paths[nearest_drum])
+            play_sound_thread(drum_samples_paths[nearest_drum],volume)
             # 코드 실행 후 시간을 측정합니다.
             end_time = time.time()
             elapsed_time = end_time - start_time
@@ -118,6 +126,7 @@ try:
             plt.plot(input_audio)
             plt.show()
             print(nearest_drum)
+            stream.start_stream()
 except KeyboardInterrupt:
     print("종료합니다.")
 
