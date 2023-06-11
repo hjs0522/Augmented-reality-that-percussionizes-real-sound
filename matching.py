@@ -31,25 +31,42 @@ find_samples_paths = {name: os.path.join(find_directory, name + '.wav') for name
 find_mfcc_dic = {}
 # 녹음한 소리의 MFCC 계산
 for key,value in find_samples.items():
-    find_mfcc = librosa.feature.mfcc(y=value, sr=44100)
+    find_mfcc = librosa.feature.mfcc(y=value, sr=44100,n_fft=1024)
     find_mfcc_mean = find_mfcc.mean(axis=1)
     find_mfcc_dic[key] = find_mfcc_mean
 
 #가장 비슷한 드럼 소리를 찾아주는 함수
+from numpy import dot
+from numpy.linalg import norm
 def find_nearest_drum_sound(input_audio):
     # 입력 오디오의 MFCC 계산
-    """
-    mfcc 를 통해 소리의 특징을 분석할 수 있다. 그렇기에 입력 소리의 mfcc를 추출하여 사용한다.
-    """
-    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100)
+    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100,n_fft=1024)
+    input_mfcc_mean = input_mfcc.mean(axis=1)
+
+    max_similarity = float('-inf')
+    nearest_drum = None
+
+    for key,value in find_samples.items():
+        # 코사인 유사도를 이용하여 입력 오디오와 드럼 소리의 유사성 계산
+        cos_sim = dot(input_mfcc_mean, find_mfcc_dic[key])/(norm(input_mfcc_mean)*norm(find_mfcc_dic[key]))
+        
+        # 가장 유사한 드럼 소리 찾기
+        if cos_sim > max_similarity:
+            max_similarity = cos_sim
+            nearest_drum = key
+
+    return nearest_drum
+"""
+def find_nearest_drum_sound(input_audio):
+    # 입력 오디오의 MFCC 계산
+    #mfcc 를 통해 소리의 특징을 분석할 수 있다. 그렇기에 입력 소리의 mfcc를 추출하여 사용한다.
+    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100,n_fft=1024)
     input_mfcc_mean = input_mfcc.mean(axis=1)
     print(input_mfcc_mean)
     min_distance = float('inf')
     nearest_drum = None
     
-    """
-    mfcc간의 비교를 하는 경우 가장 많이 쓰는 유클리디안 거리를 사용하여 입력 오디오와 드럽 소리의 유사성을 계산한다.
-    """
+    #mfcc간의 비교를 하는 경우 가장 많이 쓰는 유클리디안 거리를 사용하여 입력 오디오와 드럽 소리의 유사성을 계산한다.
     for key,value in find_samples.items():
         # 유클리디안 거리를 사용하여 입력 오디오와 드럼 소리의 유사성 계산
         distance = euclidean(input_mfcc_mean, find_mfcc_dic[key])
@@ -59,16 +76,62 @@ def find_nearest_drum_sound(input_audio):
             min_distance = distance
             nearest_drum = key
     return nearest_drum
+"""
 
+"""
+from numpy import dot
+from numpy.linalg import norm
 
+#가장 비슷한 드럼 소리를 찾아주는 함수
+def find_nearest_drum_sound(input_audio):
+    # 입력 오디오의 MFCC 계산
+    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100,n_fft=1024)
+    input_mfcc_mean = input_mfcc.mean(axis=1)
+
+    max_similarity = float('-inf')
+    nearest_drum = None
+
+    for key,value in find_samples.items():
+        # 코사인 유사도를 이용하여 입력 오디오와 드럼 소리의 유사성 계산
+        cos_sim = dot(input_mfcc_mean, find_mfcc_dic[key])/(norm(input_mfcc_mean)*norm(find_mfcc_dic[key]))
+        
+        # 가장 유사한 드럼 소리 찾기
+        if cos_sim > max_similarity:
+            max_similarity = cos_sim
+            nearest_drum = key
+
+    return nearest_drum
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
+
+#가장 비슷한 드럼 소리를 찾아주는 함수
+def find_nearest_drum_sound(input_audio):
+    # 입력 오디오의 MFCC 계산
+    input_mfcc = librosa.feature.mfcc(y=input_audio, sr=44100,n_fft=1024)
+    input_mfcc_mean = input_mfcc.mean(axis=1)
+
+    min_distance = float('inf')
+    nearest_drum = None
+
+    for key,value in find_samples.items():
+        # fastdtw를 이용하여 입력 오디오와 드럼 소리의 유사성 계산
+        distance, _ = fastdtw(input_mfcc_mean, find_mfcc_dic[key], dist=euclidean)
+
+        # 가장 유사한 드럼 소리 찾기
+        if distance < min_distance:
+            min_distance = distance
+            nearest_drum = key
+
+    return nearest_drum
+"""
 # 오디오 스트리밍을 위한 설정
-CHUNK = 1024*2  # 한 번에 읽을 프레임 수
+CHUNK = 1024  # 한 번에 읽을 프레임 수
 FORMAT = pyaudio.paInt16  # 16비트 정수 형식
 CHANNELS = 1  # mono
 RATE = 44100  # 샘플링 레이트 (Hz)
 
 # 소리 임계값 설정 (dB)
-THRESHOLD = 5000
+THRESHOLD = 3000
 
 # pyaudio 인스턴스 생성
 p = pyaudio.PyAudio()
@@ -111,7 +174,9 @@ try:
         """
         if rms > THRESHOLD:
             # 가장 유사한 드럼 소리 찾기
+            stream.stop_stream()
             nearest_drum = find_nearest_drum_sound(input_audio)
+            print(nearest_drum)
             if nearest_drum == 'output':
                 nearest_drum = 'Bass-Drum-1'
             elif nearest_drum == 'output2':
@@ -123,11 +188,12 @@ try:
             end_time = time.time()
             elapsed_time = end_time - start_time
             print(f"코드 실행 시간: {elapsed_time:.5f} 초")
-             # 그래프 그리기
-            plt.figure(figsize=(14, 5))
-            plt.plot(input_audio)
-            plt.show()
             print(nearest_drum)
+            stream.start_stream()
+            
+
+            
+            
 except KeyboardInterrupt:
     print("종료합니다.")
 
