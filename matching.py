@@ -143,16 +143,16 @@ stream = p.open(format=FORMAT,
                 input=True,
                 frames_per_buffer=CHUNK)
 
-def play_sound(file):
+def play_sound(file, volume):
     pygame.mixer.init()
     pygame.mixer.music.load(file)
+    pygame.mixer.music.set_volume(volume)
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy():  # 음악 재생이 끝나기를 기다림
         continue
 
-# 스레드를 사용하여 오디오 재생
-def play_sound_thread(file):
-    t = threading.Thread(target=play_sound, args=(file,))
+def play_sound_thread(file, volume):
+    t = threading.Thread(target=play_sound, args=(file, volume))
     t.start()
 
 # 스트림을 지속적으로 읽고 소리 크기 확인
@@ -175,6 +175,9 @@ try:
         if rms > THRESHOLD:
             # 가장 유사한 드럼 소리 찾기
             stream.stop_stream()
+            MAX_RMS = 10000  # 이 값은 소리의 최대 RMS 값에 따라 조정해야 할 수도 있습니다.
+            volume = rms / MAX_RMS
+            volume = max(0.0, min(1.0, volume))  # 볼륨을 0.0과 1.0 사이로 제한합니다.
             nearest_drum = find_nearest_drum_sound(input_audio)
             print(nearest_drum)
             if nearest_drum == 'output':
@@ -183,7 +186,7 @@ try:
                 nearest_drum = 'Ensoniq-VFX-SD-Snare'
             else:
                 nearest_drum = 'Ensoniq-VFX-SD-Snare-2'
-            play_sound_thread(drum_samples_paths[nearest_drum])
+            play_sound_thread(drum_samples_paths[nearest_drum],volume)
             # 코드 실행 후 시간을 측정합니다.
             end_time = time.time()
             elapsed_time = end_time - start_time
